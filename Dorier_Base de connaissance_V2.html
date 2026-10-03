@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base de connaissance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f5f8; --card: #ffffff; --text: #171c2b; --muted: #667089; --line: #e3e6ee;
+    --accent: #3552d6; --accent-soft: #e8ecfc; --danger: #c0291c;
+    --good: #12805c; --good-soft: #dff5ec; --mid: #b26a00; --mid-soft: #fdf0d5; --bad: #c0291c; --bad-soft: #fde4e1;
+    --shadow: 0 1px 2px rgba(23,28,43,.06), 0 4px 16px rgba(23,28,43,.05);
+    --font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f121b; --card: #181d2a; --text: #e9ecf5; --muted: #98a2bb; --line: #283043;
+      --accent: #8ea4ff; --accent-soft: #232c4d; --danger: #ff7b6e;
+      --good: #4cd3a0; --good-soft: #14352b; --mid: #f2b04a; --mid-soft: #3a2d12; --bad: #ff7b6e; --bad-soft: #3d1e1b;
+      --shadow: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--font); }
+  main { max-width: 1400px; margin: 0 auto; padding: 24px 16px 70px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+  h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
+  .sub { margin: 2px 0 0; color: var(--muted); }
+  .head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text);
+         font: inherit; font-weight: 600; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.small { padding: 3px 9px; font-size: 12px; border-radius: 8px; }
+  .btn.danger { color: var(--danger); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  a { color: var(--accent); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+  .kpi .lbl { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .kpi .val { font-size: 32px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .kpi .hint { color: var(--muted); font-size: 12px; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .panel h2 { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+  .hint { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .bars { display: grid; gap: 6px; }
+  .bar { display: grid; grid-template-columns: minmax(70px, 120px) 1fr 34px; gap: 8px; align-items: center; font-size: 12.5px; }
+  .bar .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+  .bar .track { height: 10px; background: var(--accent-soft); border-radius: 99px; overflow: hidden; }
+  .bar .fill { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .bar .num { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  button.bar { background: none; border: 0; padding: 2px 0; color: inherit; font: inherit; font-size: 12.5px; cursor: pointer; width: 100%; }
+  button.bar:hover .name { color: var(--accent); }
+  .stack { display: flex; height: 16px; border-radius: 99px; overflow: hidden; margin: 6px 0 12px; background: var(--line); }
+  .stack > span { height: 100%; }
+  .legend { display: grid; gap: 4px; font-size: 12.5px; }
+  .legend div { display: flex; align-items: center; gap: 8px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .legend b { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .c-good { background: var(--good); } .c-mid { background: var(--mid); } .c-bad { background: var(--bad); }
+  .bar.missing .fill { background: var(--mid); } .bar.missing .track { background: var(--mid-soft); }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .toolbar input, .toolbar select { padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+                                    color: var(--text); font: inherit; }
+  .toolbar input { flex: 1 1 260px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 99px; padding: 3px 11px;
+          font: inherit; font-size: 12.5px; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .count { color: var(--muted); margin: 0 0 8px; }
+
+  .wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: var(--shadow); }
+  table { table-layout: fixed; border-collapse: collapse; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line);
+           overflow-wrap: anywhere; word-break: break-word; }
+  th { position: relative; background: var(--card); font-size: 11.5px; text-transform: uppercase;
+       letter-spacing: .06em; color: var(--muted); user-select: none; white-space: nowrap; overflow: hidden; }
+  th[data-key] { cursor: pointer; }
+  th[data-key]:hover { color: var(--accent); }
+  th .arrow { margin-left: 4px; }
+  .rz { position: absolute; top: 0; right: 0; bottom: 0; width: 9px; cursor: col-resize; touch-action: none; }
+  .rz::after { content: ""; position: absolute; right: 3px; top: 25%; bottom: 25%; width: 2px; background: var(--line); border-radius: 2px; }
+  .rz:hover::after, .rz.active::after { background: var(--accent); }
+  tbody tr:hover td { background: var(--accent-soft); }
+  td.nom { font-weight: 700; }
+  td.idc { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tag { display: inline-block; background: var(--accent-soft); color: var(--accent); padding: 1px 9px; border-radius: 99px;
+         font-size: 12px; margin: 0 4px 3px 0; font-weight: 600; }
+  tbody tr:hover .tag { background: var(--card); }
+  .empty { color: var(--muted); }
+  .ai { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .04em; color: var(--accent);
+        border: 1px solid var(--accent); border-radius: 5px; padding: 0 4px; margin-left: 6px; vertical-align: 2px; }
+  .score { display: grid; gap: 3px; }
+  .score .top { display: flex; align-items: center; gap: 8px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .meter { flex: 1; min-width: 20px; height: 7px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .meter > span { display: block; height: 100%; border-radius: 99px; }
+  .pill { font-size: 11px; font-weight: 700; padding: 0 8px; border-radius: 99px; }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.mid { background: var(--mid-soft); color: var(--mid); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .score small { color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+  .actions-box { display: flex; flex-wrap: wrap; gap: 4px; }
+  tr td.msg { text-align: center; color: var(--muted); padding: 40px 10px; }
+  tr td.msg.error { color: var(--danger); }
+  details.method { margin: 0 0 14px; }
+  details.method summary { cursor: pointer; font-weight: 700; }
+  details.method ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); }
+
+  dialog { border: 1px solid var(--line); border-radius: 16px; padding: 20px; width: min(560px, 94vw); background: var(--card); color: var(--text); }
+  dialog::backdrop { background: rgba(10,12,20,.5); }
+  dialog h2 { margin: 0 0 10px; }
+  label { display: block; font-weight: 600; margin: 10px 0 3px; }
+  dialog input, dialog textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+                                  background: var(--bg); color: var(--text); font: inherit; }
+  textarea { min-height: 78px; resize: vertical; }
+  #formError { color: var(--danger); min-height: 18px; margin-top: 8px; }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg);
+           padding: 10px 16px; border-radius: 10px; display: none; font-weight: 600; }
+
+  /* assistant panel */
+  .fab { position: fixed; right: 18px; bottom: 18px; z-index: 20; box-shadow: var(--shadow); padding: 11px 18px; border-radius: 99px; }
+  .chat { position: fixed; top: 0; right: 0; bottom: 0; width: min(430px, 100vw); z-index: 30; display: none; flex-direction: column;
+          background: var(--card); border-left: 1px solid var(--line); box-shadow: -8px 0 30px rgba(0,0,0,.18); }
+  .chat.open { display: flex; }
+  .chat-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .chat-head h2 { margin: 0; font-size: 16px; }
+  .chat-log { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 92%; padding: 9px 12px; border-radius: 14px; overflow-wrap: anywhere; }
+  .msg.user { align-self: flex-end; background: var(--accent); color: #fff; }
+  .msg.bot { align-self: flex-start; background: var(--bg); border: 1px solid var(--line); }
+  .msg.bot p { margin: 0 0 6px; } .msg.bot p:last-child { margin: 0; }
+  .msg.bot ul { margin: 4px 0; padding-left: 18px; }
+  .msg.err { align-self: flex-start; color: var(--danger); }
+  .ref { border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 0 5px;
+         font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .srcs { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .srcs a { margin-right: 8px; }
+  .prop { border: 1px solid var(--mid); background: var(--mid-soft); border-radius: 12px; padding: 10px 12px; align-self: stretch; }
+  .prop.done { opacity: .6; }
+  .prop h3 { margin: 0 0 6px; font-size: 13px; }
+  .prop dl { display: grid; grid-template-columns: 78px 1fr; gap: 3px 8px; margin: 0 0 8px; font-size: 12.5px; }
+  .prop dt { color: var(--muted); } .prop dd { margin: 0; overflow-wrap: anywhere; }
+  .prop del { color: var(--muted); } .prop ins { text-decoration: none; font-weight: 700; }
+  .prop .row { display: flex; gap: 6px; }
+  .chat-form { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--line); }
+  .chat-form textarea { flex: 1; min-height: 42px; max-height: 120px; resize: none; padding: 9px 11px; border: 1px solid var(--line);
+                        border-radius: 12px; background: var(--bg); color: var(--text); font: inherit; }
+  .hintline { font-size: 11.5px; color: var(--muted); padding: 0 16px 10px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Base de connaissance</h1>
+      <p class="sub">Tableau de bord, qualité des données et édition en direct.</p>
+    </div>
+    <div class="head-actions">
+      <a class="btn" href="review.html" style="text-decoration:none;color:inherit">Suggestions IA</a>
+      <button class="btn" id="resetCols" type="button">Réinitialiser les colonnes</button>
+      <button class="btn primary" id="addBtn" type="button">+ Ajouter</button>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="Indicateurs"></section>
+  <section class="charts" id="charts" aria-label="Graphiques"></section>
+
+  <details class="method panel">
+    <summary>Comment sont calculés la complétude et la fiabilité ?</summary>
+    <ul>
+      <li><b>Complétude</b> : Nom 25 %, Texte 30 %, Lien 25 %, Étiquettes 20 %. Chaque champ rempli compte. Note Alex est facultative et n'entre pas dans le calcul.</li>
+      <li><b>Fiabilité</b> : moyenne de la confiance accordée aux champs remplis. Une valeur saisie par vous vaut 100 %. Une valeur proposée par l'IA vaut 75 % (nom, étiquettes) ou 60 % (texte). Un lien proposé par l'IA vaut 90 % si son domaine figure dans les sources trouvées, sinon 40 %. Un lien mal formé vaut 30 %.</li>
+      <li>Sans lien, aucune source n'est vérifiable : la fiabilité est multipliée par 0,8.</li>
+      <li>Niveaux : <b>Élevée</b> à partir de 85, <b>Moyenne</b> de 60 à 84, <b>Faible</b> sous 60. Ce score est une estimation automatique. Il ne remplace pas une vérification humaine.</li>
+      <li>Le badge <span class="ai">IA</span> marque un champ proposé par l'IA puis approuvé.</li>
+    </ul>
+  </details>
+
+  <div class="toolbar">
+    <input id="q" type="search" placeholder="Rechercher dans toute la base…" aria-label="Rechercher">
+    <select id="fComp" aria-label="Filtre complétude">
+      <option value="">Complétude : toutes</option>
+      <option value="full">100 % complètes</option>
+      <option value="partial">Incomplètes</option>
+    </select>
+    <select id="fRel" aria-label="Filtre fiabilité">
+      <option value="">Fiabilité : toutes</option>
+      <option value="good">Élevée</option>
+      <option value="mid">Moyenne</option>
+      <option value="bad">Faible</option>
+    </select>
+  </div>
+  <div class="tags" id="tags"></div>
+  <p class="count" id="count"></p>
+
+  <div class="wrap">
+    <table id="tbl">
+      <colgroup id="cols"></colgroup>
+      <thead><tr id="head"></tr></thead>
+      <tbody id="rows"><tr><td colspan="9" class="msg">Chargement…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<dialog id="dlg">
+  <form id="form" method="dialog" novalidate>
+    <h2 id="dlgTitle">Ajouter une entrée</h2>
+    <label for="f_nom">Nom</label>
+    <input id="f_nom" maxlength="300" autocomplete="off">
+    <label for="f_note">Note Alex</label>
+    <textarea id="f_note" maxlength="4000"></textarea>
+    <label for="f_texte">Texte</label>
+    <textarea id="f_texte" maxlength="4000"></textarea>
+    <label for="f_url">Lien</label>
+    <input id="f_url" maxlength="2000" autocomplete="off" placeholder="https://…">
+    <label for="f_tags">Étiquettes</label>
+    <input id="f_tags" autocomplete="off" placeholder="ai, artiste, Matériel">
+    <div class="hint">Séparez les étiquettes par des virgules.</div>
+    <div id="formError" role="alert"></div>
+    <div class="dlg-actions">
+      <button class="btn" type="button" id="cancelBtn">Annuler</button>
+      <button class="btn primary" type="submit" id="saveBtn">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+<button class="btn primary fab" id="chatBtn" type="button">Assistant</button>
+<aside class="chat" id="chat" aria-label="Assistant">
+  <div class="chat-head"><h2>Assistant de la base</h2><button class="btn small" id="chatClose" type="button">Fermer</button></div>
+  <div class="chat-log" id="chatLog" aria-live="polite"></div>
+  <div class="hintline">Il cherche dans la base puis sur Internet. Toute modification demande votre confirmation.</div>
+  <form class="chat-form" id="chatForm">
+    <textarea id="chatIn" rows="1" maxlength="2000" placeholder="Posez une question ou demandez une modification…" aria-label="Message"></textarea>
+    <button class="btn primary" id="chatSend" type="submit">Envoyer</button>
+  </form>
+</aside>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var cfg = window.APP_CONFIG;
+  var $ = function (id) { return document.getElementById(id); };
+  var REST = cfg.SUPABASE_URL + "/rest/v1/";
+  var API = REST + cfg.TABLE;
+  var HEAD = { apikey: cfg.SUPABASE_PUBLISHABLE_KEY, Authorization: "Bearer " + cfg.SUPABASE_PUBLISHABLE_KEY,
+               "Content-Type": "application/json", Prefer: "return=representation" };
+
+  var rows = [], ai = {}, activeTag = null, sortKey = "id", sortDir = 1, editingId = null;
+
+  // ---- columns: drag the handle on a header's right edge; widths are remembered in this browser
+  var COLS = [
+    { key: "id", label: "#", w: 56 },
+    { key: "nom", label: "Nom", w: 200 },
+    { key: "note_alex", label: "Note Alex", w: 220 },
+    { key: "texte", label: "Texte", w: 340 },
+    { key: "url", label: "Lien", w: 220 },
+    { key: "etiquettes", label: "Étiquettes", w: 180 },
+    { key: "completude", label: "Complétude", w: 190 },
+    { key: "fiabilite", label: "Fiabilité", w: 210 },
+    { key: null, label: "Actions", w: 170 }
+  ];
+  var STORE = "kb-col-widths-v1";
+  function loadWidths() {
+    try {
+      var s = JSON.parse(localStorage.getItem(STORE) || "null");
+      if (Array.isArray(s) && s.length === COLS.length) s.forEach(function (w, i) { if (w >= 50 && w <= 1200) COLS[i].w = w; });
+    } catch (e) { /* storage unavailable: keep defaults */ }
+  }
+  function saveWidths() { try { localStorage.setItem(STORE, JSON.stringify(COLS.map(function (c) { return c.w; }))); } catch (e) {} }
+  function applyWidths() {
+    var total = 0;
+    $("cols").innerHTML = COLS.map(function (c) { total += c.w; return '<col style="width:' + c.w + 'px">'; }).join("");
+    $("tbl").style.width = total + "px";
+  }
+  function renderHead() {
+    $("head").innerHTML = COLS.map(function (c, i) {
+      var arrow = c.key === sortKey ? '<span class="arrow">' + (sortDir === 1 ? "▲" : "▼") + "</span>" : "";
+      return "<th" + (c.key ? ' data-key="' + c.key + '"' : "") + ' scope="col">' + c.label + arrow +
+             '<span class="rz" data-i="' + i + '" title="Glisser pour redimensionner"></span></th>';
+    }).join("");
+  }
+  $("head").addEventListener("pointerdown", function (e) {
+    var h = e.target.closest(".rz");
+    if (!h) return;
+    e.preventDefault(); e.stopPropagation();
+    var i = Number(h.dataset.i), startX = e.clientX, startW = COLS[i].w;
+    h.classList.add("active");
+    h.setPointerCapture(e.pointerId);
+    function move(ev) { COLS[i].w = Math.max(50, Math.min(1200, startW + ev.clientX - startX)); applyWidths(); }
+    function up() { h.classList.remove("active"); h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up); saveWidths(); }
+    h.addEventListener("pointermove", move); h.addEventListener("pointerup", up);
+  });
+  $("head").addEventListener("click", function (e) {
+    if (e.target.closest(".rz")) return;
+    var th = e.target.closest("th");
+    if (!th || !th.dataset.key) return;
+    var k = th.dataset.key;
+    if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+    renderHead(); render();
+  });
+  $("resetCols").addEventListener("click", function () {
+    try { localStorage.removeItem(STORE); } catch (e) {}
+    location.reload();
+  });
+
+  // ---- safe text helpers (everything from the database is untrusted)
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function linkify(s) {
+    return esc(s).replace(/(https?:\/\/[^\s<]+)/g, function (u) {
+      return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + "</a>";
+    });
+  }
+  function urlCell(u) {
+    if (!u) return '<span class="empty">—</span>';
+    var href = /^https?:\/\//i.test(u) ? u : "https://" + u;
+    return '<a href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + esc(u) + "</a>";
+  }
+  function cell(s) { return s ? linkify(s) : '<span class="empty">—</span>'; }
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.style.display = "block";
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.style.display = "none"; }, 3200);
+  }
+
+  // ---- quality scores (method is explained in the page)
+  var W = { nom: 25, texte: 30, url: 25, etiquettes: 20 };
+  var LABEL = { nom: "nom", texte: "texte", url: "lien", etiquettes: "étiquettes" };
+  var LEVEL_LABEL = { good: "Élevée", mid: "Moyenne", bad: "Faible" };
+  function host(u) {
+    try { return new URL(/^https?:\/\//i.test(u) ? u : "https://" + u).hostname.replace(/^www\./, "").toLowerCase(); }
+    catch (e) { return null; }
+  }
+  function validUrl(u) { var h = host(u); return !!h && h.indexOf(".") > 0; }
+
+  function scoreRow(r) {
+    var sg = ai[r.id] || null;
+    var filled = { nom: !!r.nom, texte: !!r.texte, url: !!r.url, etiquettes: r.etiquettes.length > 0 };
+    var comp = 0, missing = [], trustSum = 0, n = 0, aiFields = [];
+    Object.keys(W).forEach(function (f) {
+      if (!filled[f]) { missing.push(LABEL[f]); return; }
+      comp += W[f];
+      var fromAi = sg && (f === "etiquettes" ? sg.etiquettes && sg.etiquettes.length : sg[f]);
+      var t = 1;
+      if (fromAi) {
+        aiFields.push(f);
+        if (f === "url") {
+          var h = host(r.url);
+          var inSources = h && (sg.sources || []).some(function (s) {
+            var sh = host(s.uri || "");
+            return sh && (sh === h || sh.slice(-h.length - 1) === "." + h);
+          });
+          t = inSources ? 0.9 : 0.4;
+        } else t = f === "texte" ? 0.6 : 0.75;
+      }
+      if (f === "url" && !validUrl(r.url)) t = 0.3;
+      trustSum += t; n++;
+    });
+    var rel = n ? (trustSum / n) * 100 : 0;
+    if (n && !filled.url) rel *= 0.8;
+    rel = Math.round(rel);
+    return { comp: comp, rel: rel, missing: missing, aiFields: aiFields,
+             level: rel >= 85 ? "good" : rel >= 60 ? "mid" : "bad" };
+  }
+
+  // ---- table
+  function sortValue(r, k) {
+    if (k === "etiquettes") return r.etiquettes.join(",");
+    if (k === "completude") return r.sc.comp;
+    if (k === "fiabilite") return r.sc.rel;
+    return r[k];
+  }
+  function visible() {
+    var q = $("q").value.trim().toLowerCase(), fc = $("fComp").value, fr = $("fRel").value;
+    var out = rows.filter(function (r) {
+      if (activeTag && r.etiquettes.indexOf(activeTag) === -1) return false;
+      if (fc === "full" && r.sc.comp < 100) return false;
+      if (fc === "partial" && r.sc.comp >= 100) return false;
+      if (fr && r.sc.level !== fr) return false;
+      if (!q) return true;
+      return [r.nom, r.note_alex, r.texte, r.url, r.etiquettes.join(" ")].join(" ").toLowerCase().indexOf(q) !== -1;
+    });
+    out.sort(function (a, b) {
+      var x = sortValue(a, sortKey), y = sortValue(b, sortKey);
+      if (typeof x === "number" && typeof y === "number") return (x - y) * sortDir;
+      x = x == null ? "" : String(x); y = y == null ? "" : String(y);
+      if (!x && y) return 1;
+      if (x && !y) return -1;
+      return x.localeCompare(y, "fr", { sensitivity: "base", numeric: true }) * sortDir;
+    });
+    return out;
+  }
+  function badge(r, f) {
+    return r.sc.aiFields.indexOf(f) !== -1 ? '<span class="ai" title="Proposé par l\'IA puis approuvé">IA</span>' : "";
+  }
+  function compCell(r) {
+    var s = r.sc, lv = s.comp >= 85 ? "good" : s.comp >= 60 ? "mid" : "bad";
+    return '<div class="score"><div class="top"><span>' + s.comp + ' %</span><span class="meter"><span style="width:' + s.comp +
+           "%;background:var(--" + lv + ')"></span></span></div><small>' +
+           (s.missing.length ? "Manque : " + esc(s.missing.join(", ")) : "Fiche complète") + "</small></div>";
+  }
+  function relCell(r) {
+    var s = r.sc;
+    return '<div class="score"><div class="top"><span>' + s.rel + '</span><span class="meter"><span style="width:' + s.rel +
+           "%;background:var(--" + s.level + ')"></span></span><span class="pill ' + s.level + '">' + LEVEL_LABEL[s.level] + "</span></div><small>" +
+           (s.aiFields.length ? "Champs IA : " + esc(s.aiFields.map(function (f) { return LABEL[f]; }).join(", ")) : "Saisie humaine") + "</small></div>";
+  }
+  function render() {
+    var list = visible();
+    $("count").textContent = list.length + " / " + rows.length + " lignes";
+    if (!list.length) { $("rows").innerHTML = '<tr><td colspan="9" class="msg">Aucun résultat.</td></tr>'; return; }
+    $("rows").innerHTML = list.map(function (r) {
+      var tags = r.etiquettes.length
+        ? r.etiquettes.map(function (t) { return '<span class="tag">' + esc(t) + "</span>"; }).join("") + badge(r, "etiquettes")
+        : '<span class="empty">—</span>';
+      return "<tr>" +
+        '<td class="idc">' + r.id + "</td>" +
+        '<td class="nom">' + (r.nom ? linkify(r.nom) + badge(r, "nom") : '<span class="empty">(sans nom)</span>') + "</td>" +
+        "<td>" + cell(r.note_alex) + "</td>" +
+        "<td>" + cell(r.texte) + (r.texte ? badge(r, "texte") : "") + "</td>" +
+        "<td>" + urlCell(r.url) + (r.url ? badge(r, "url") : "") + "</td>" +
+        "<td>" + tags + "</td>" +
+        "<td>" + compCell(r) + "</td><td>" + relCell(r) + "</td>" +
+        '<td><div class="actions-box"><button class="btn small" data-act="edit" data-id="' + r.id + '">Modifier</button>' +
+        '<button class="btn small danger" data-act="del" data-id="' + r.id + '">Supprimer</button></div></td></tr>';
+    }).join("");
+  }
+
+  // ---- dashboard
+  function pct(n, d) { return d ? Math.round((n / d) * 100) : 0; }
+  function renderDash() {
+    var n = rows.length;
+    var avgC = n ? Math.round(rows.reduce(function (a, r) { return a + r.sc.comp; }, 0) / n) : 0;
+    var avgR = n ? Math.round(rows.reduce(function (a, r) { return a + r.sc.rel; }, 0) / n) : 0;
+    var full = rows.filter(function (r) { return r.sc.comp >= 100; }).length;
+    var aiRows = rows.filter(function (r) { return r.sc.aiFields.length; }).length;
+    var low = rows.filter(function (r) { return r.sc.level === "bad"; }).length;
+    var kpi = function (l, v, h) { return '<div class="panel kpi"><div class="lbl">' + l + '</div><div class="val">' + v + '</div><div class="hint">' + h + "</div></div>"; };
+    $("kpis").innerHTML =
+      kpi("Entrées", n, "dans la base") +
+      kpi("Complétude moyenne", avgC + " %", full + " fiches 100 % complètes") +
+      kpi("Fiabilité moyenne", avgR + " / 100", low + " fiches à fiabilité faible") +
+      kpi("Enrichies par l'IA", aiRows, pct(aiRows, n) + " % de la base");
+
+    var counts = {};
+    rows.forEach(function (r) { r.etiquettes.forEach(function (t) { counts[t] = (counts[t] || 0) + 1; }); });
+    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b, "fr"); });
+    var max = names.length ? counts[names[0]] : 1;
+    var tagBars = names.slice(0, 8).map(function (t) {
+      return '<button class="bar" type="button" data-tag="' + esc(t) + '"><span class="name">' + esc(t) +
+             '</span><span class="track"><span class="fill" style="width:' + pct(counts[t], max) + '%"></span></span><span class="num">' + counts[t] + "</span></button>";
+    }).join("") || '<span class="empty">Aucune étiquette.</span>';
+
+    var lv = { good: 0, mid: 0, bad: 0 };
+    rows.forEach(function (r) { lv[r.sc.level]++; });
+    var stack = ["good", "mid", "bad"].map(function (k) { return '<span class="c-' + k + '" style="width:' + pct(lv[k], n) + '%"></span>'; }).join("");
+    var legend = ["good", "mid", "bad"].map(function (k) {
+      return '<div><i class="c-' + k + '"></i>' + LEVEL_LABEL[k] + "<b>" + lv[k] + " (" + pct(lv[k], n) + " %)</b></div>";
+    }).join("");
+
+    var miss = { nom: 0, texte: 0, url: 0, etiquettes: 0 };
+    rows.forEach(function (r) {
+      Object.keys(LABEL).forEach(function (f) { if (r.sc.missing.indexOf(LABEL[f]) !== -1) miss[f]++; });
+    });
+    var mmax = Math.max(1, miss.nom, miss.texte, miss.url, miss.etiquettes);
+    var missBars = Object.keys(miss).map(function (f) {
+      return '<div class="bar missing"><span class="name">' + LABEL[f] + '</span><span class="track"><span class="fill" style="width:' +
+             pct(miss[f], mmax) + '%"></span></span><span class="num">' + miss[f] + "</span></div>";
+    }).join("");
+
+    $("charts").innerHTML =
+      '<div class="panel"><h2>Entrées par étiquette <span class="hint">(cliquer pour filtrer)</span></h2><div class="bars">' + tagBars + "</div></div>" +
+      '<div class="panel"><h2>Niveau de fiabilité</h2><div class="stack">' + stack + '</div><div class="legend">' + legend + "</div></div>" +
+      '<div class="panel"><h2>Champs manquants</h2><div class="bars">' + missBars + "</div></div>";
+  }
+
+  function renderTags() {
+    var counts = {};
+    rows.forEach(function (r) { r.etiquettes.forEach(function (t) { counts[t] = (counts[t] || 0) + 1; }); });
+    if (activeTag && !counts[activeTag]) activeTag = null;
+    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b, "fr"); });
+    $("tags").innerHTML = names.map(function (t) {
+      return '<button class="chip" type="button" data-tag="' + esc(t) + '" aria-pressed="' + (t === activeTag) + '">' +
+             esc(t) + " (" + counts[t] + ")</button>";
+    }).join("");
+  }
+  function toggleTag(t) { activeTag = activeTag === t ? null : t; renderTags(); render(); }
+  $("tags").addEventListener("click", function (e) { var b = e.target.closest(".chip"); if (b) toggleTag(b.dataset.tag); });
+  $("charts").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-tag]");
+    if (b) { toggleTag(b.dataset.tag); $("tags").scrollIntoView({ behavior: "smooth", block: "center" }); }
+  });
+  ["q", "fComp", "fRel"].forEach(function (id) { $(id).addEventListener("input", render); });
+
+  // ---- talking to Supabase
+  function call(method, url, body) {
+    return fetch(url, { method: method, headers: HEAD, body: body ? JSON.stringify(body) : undefined })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Erreur " + res.status);
+        return res.status === 204 ? null : res.json();
+      });
+  }
+  function request(method, query, body) { return call(method, API + query, body); }
+
+  function load() {
+    return Promise.all([
+      request("GET", "?select=id,nom,note_alex,texte,url,etiquettes&order=id.asc&limit=1000"),
+      // approved AI suggestions tell us which fields came from the AI and which sources backed them
+      call("GET", REST + "base_de_connaissance_suggestions?status=eq.approved&select=entry_id,nom,texte,url,etiquettes,sources&limit=1000")
+        .catch(function () { return []; })
+    ]).then(function (res) {
+      ai = {};
+      res[1].forEach(function (s) { ai[s.entry_id] = s; });
+      rows = res[0].map(function (r) {
+        var row = { id: r.id, nom: r.nom, note_alex: r.note_alex, texte: r.texte, url: r.url,
+                    etiquettes: Array.isArray(r.etiquettes) ? r.etiquettes : [] };
+        row.sc = scoreRow(row);
+        return row;
+      });
+      renderDash(); renderTags(); render();
+      if (!rows.length) $("rows").innerHTML = '<tr><td colspan="9" class="msg"><b>Aucune donnée visible.</b><br>La table est vide ou la lecture est verrouillée (RLS).</td></tr>';
+    }).catch(function (err) {
+      $("rows").innerHTML = '<tr><td colspan="9" class="msg error"><b>Impossible de charger la base.</b><br>' + esc(err.message) + "<br>Vérifiez votre connexion et config.js.</td></tr>";
+    });
+  }
+
+  // ---- add / edit dialog
+  function openDialog(row) {
+    editingId = row ? row.id : null;
+    $("dlgTitle").textContent = row ? "Modifier l'entrée" : "Ajouter une entrée";
+    $("f_nom").value = row ? row.nom || "" : "";
+    $("f_note").value = row ? row.note_alex || "" : "";
+    $("f_texte").value = row ? row.texte || "" : "";
+    $("f_url").value = row ? row.url || "" : "";
+    $("f_tags").value = row ? row.etiquettes.join(", ") : "";
+    $("formError").textContent = "";
+    $("dlg").showModal();
+    $("f_nom").focus();
+  }
+  function clean(v) { v = v.trim(); return v === "" ? null : v; }
+
+  $("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var payload = {
+      nom: clean($("f_nom").value), note_alex: clean($("f_note").value), texte: clean($("f_texte").value),
+      url: clean($("f_url").value),
+      etiquettes: $("f_tags").value.split(",").map(function (t) { return t.trim(); }).filter(Boolean)
+    };
+    if (!payload.nom && !payload.texte && !payload.url && !payload.note_alex) {
+      $("formError").textContent = "Remplissez au moins un champ."; return;
+    }
+    $("saveBtn").disabled = true;
+    var c = editingId == null ? request("POST", "", payload) : request("PATCH", "?id=eq." + editingId, payload);
+    c.then(function () {
+        $("dlg").close(); toast(editingId == null ? "Entrée ajoutée" : "Entrée modifiée"); return load();
+      })
+      .catch(function (err) { $("formError").textContent = err.message + " — rien n'a été enregistré."; })
+      .then(function () { $("saveBtn").disabled = false; });
+  });
+  $("cancelBtn").addEventListener("click", function () { $("dlg").close(); });
+  $("addBtn").addEventListener("click", function () { openDialog(null); });
+
+  $("rows").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-act]");
+    if (!b) return;
+    var id = Number(b.dataset.id);
+    var row = rows.filter(function (r) { return r.id === id; })[0];
+    if (!row) return;
+    if (b.dataset.act === "edit") { openDialog(row); return; }
+    var label = row.nom || row.url || row.texte || "cette entrée";
+    if (!window.confirm("Supprimer définitivement « " + label.slice(0, 80) + " » ?")) return;
+    request("DELETE", "?id=eq." + id)
+      .then(function () { toast("Entrée supprimée"); return load(); })
+      .catch(function (err) { toast(err.message + " — rien n'a été supprimé."); });
+  });
+
+  // ---- assistant (RAG chatbot running in a Supabase Edge Function)
+  var chatMsgs = [], busy = false;
+  var FN = cfg.SUPABASE_URL + "/functions/v1/chat";
+  // Edge Functions only accept these headers (no "Prefer").
+  var FHEAD = { apikey: HEAD.apikey, Authorization: HEAD.Authorization, "Content-Type": "application/json" };
+  function fmt(text) {
+    var out = [], list = false;
+    esc(text).split("\n").forEach(function (line) {
+      var li = /^\s*[*-]\s+(.*)$/.exec(line);
+      if (li) { if (!list) { out.push("<ul>"); list = true; } out.push("<li>" + li[1] + "</li>"); return; }
+      if (list) { out.push("</ul>"); list = false; }
+      if (line.trim()) out.push("<p>" + line + "</p>");
+    });
+    if (list) out.push("</ul>");
+    return out.join("").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+      .replace(/\[#(\d+)\]/g, '<button type="button" class="ref" data-ref="$1" title="Voir dans le tableau">#$1</button>');
+  }
+  function addMsg(cls, html) {
+    var d = document.createElement("div"); d.className = "msg " + cls; d.innerHTML = html;
+    $("chatLog").appendChild(d); $("chatLog").scrollTop = $("chatLog").scrollHeight; return d;
+  }
+  function fieldRow(label, before, after, tags) {
+    var show = function (v) { return tags ? esc((v || []).join(", ")) : esc(v); };
+    var b = tags ? (before || []).join(", ") : before;
+    return "<dt>" + label + "</dt><dd>" + (before !== undefined && b ? "<del>" + show(before) + "</del><br>" : "") + "<ins>" + (show(after) || "—") + "</ins></dd>";
+  }
+  function proposalCard(p) {
+    var f = p.fields || {}, b = p.before || {}, rowsHtml = "", title;
+    if (p.kind === "add") {
+      title = "Ajouter une entrée";
+      rowsHtml = fieldRow("Nom", undefined, f.nom) + fieldRow("Texte", undefined, f.texte) + fieldRow("Lien", undefined, f.url) + fieldRow("Étiquettes", undefined, f.etiquettes, true);
+    } else if (p.kind === "update") {
+      title = "Modifier l'entrée #" + p.id + (b.nom ? " (" + esc(b.nom) + ")" : "");
+      if ("nom" in f) rowsHtml += fieldRow("Nom", b.nom, f.nom);
+      if ("texte" in f) rowsHtml += fieldRow("Texte", b.texte, f.texte);
+      if ("url" in f) rowsHtml += fieldRow("Lien", b.url, f.url);
+      if ("etiquettes" in f) rowsHtml += fieldRow("Étiquettes", b.etiquettes, f.etiquettes, true);
+    } else {
+      title = "Supprimer l'entrée #" + p.id;
+      rowsHtml = "<dt>Nom</dt><dd>" + esc(b.nom || "—") + "</dd><dt>Texte</dt><dd>" + esc(b.texte || "—") + "</dd><dt>Lien</dt><dd>" + esc(b.url || "—") + "</dd>";
+    }
+    var d = document.createElement("div"); d.className = "prop";
+    d.innerHTML = "<h3>" + title + "</h3><dl>" + rowsHtml + '</dl><div class="row"><button class="btn small primary" data-go="1" type="button">Confirmer</button>' +
+                  '<button class="btn small" data-no="1" type="button">Ignorer</button></div>';
+    d.querySelector("[data-go]").addEventListener("click", function () {
+      var btns = d.querySelectorAll("button"); btns.forEach(function (x) { x.disabled = true; });
+      fetch(FN, { method: "POST", headers: FHEAD, body: JSON.stringify({ apply: { kind: p.kind, id: p.id, fields: p.fields } }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("Erreur " + r.status)); return j; }); })
+        .then(function () { d.classList.add("done"); d.querySelector(".row").innerHTML = "<b>Appliqué</b>"; toast("Modification appliquée"); return load(); })
+        .catch(function (e) { btns.forEach(function (x) { x.disabled = false; }); toast(e.message + " — rien n'a été modifié."); });
+    });
+    d.querySelector("[data-no]").addEventListener("click", function () { d.classList.add("done"); d.querySelector(".row").innerHTML = "<i>Ignoré</i>"; });
+    $("chatLog").appendChild(d); $("chatLog").scrollTop = $("chatLog").scrollHeight;
+  }
+  function sendChat(text) {
+    if (busy || !text.trim()) return;
+    busy = true; $("chatSend").disabled = true;
+    chatMsgs.push({ role: "user", text: text });
+    addMsg("user", esc(text));
+    var wait = addMsg("bot", "<i>Je cherche…</i>");
+    fetch(FN, { method: "POST", headers: FHEAD, body: JSON.stringify({ messages: chatMsgs.slice(-10) }) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || j.error || ("Erreur " + r.status)); return j; }); })
+      .then(function (d) {
+        chatMsgs.push({ role: "assistant", text: d.reply });
+        var src = "";
+        var web = (d.used && d.used.web || []).filter(function (w) { return /^https?:\/\//i.test(w.url); });
+        if (web.length) src = '<div class="srcs">Web : ' + web.map(function (w) { return '<a href="' + esc(w.url) + '" target="_blank" rel="noopener noreferrer">' + esc(w.title || w.url) + "</a>"; }).join("") + "</div>";
+        wait.innerHTML = fmt(d.reply) + src;
+        (d.proposals || []).forEach(proposalCard);
+      })
+      .catch(function (e) { wait.className = "msg err"; wait.textContent = e.message; })
+      .then(function () { busy = false; $("chatSend").disabled = false; $("chatIn").focus(); });
+  }
+  $("chatBtn").addEventListener("click", function () {
+    $("chat").classList.add("open");
+    if (!$("chatLog").children.length) addMsg("bot", fmt("Bonjour ! Je peux chercher dans votre base, compléter avec Internet, et préparer des ajouts, modifications ou suppressions que vous confirmez.\n\nExemples : « Quels outils servent au scan 3D ? », « Ajoute Blender », « Corrige le lien de la fiche #5 »."));
+    $("chatIn").focus();
+  });
+  $("chatClose").addEventListener("click", function () { $("chat").classList.remove("open"); });
+  $("chatForm").addEventListener("submit", function (e) { e.preventDefault(); var t = $("chatIn").value; $("chatIn").value = ""; sendChat(t); });
+  $("chatIn").addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("chatForm").requestSubmit(); } });
+  $("chatLog").addEventListener("click", function (e) {
+    var b = e.target.closest(".ref"); if (!b) return;
+    var r = rows.filter(function (x) { return x.id === Number(b.dataset.ref); })[0];
+    if (!r) return;
+    $("q").value = r.nom || r.url || r.texte || ""; activeTag = null; renderTags(); render();
+    $("q").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
+  loadWidths(); applyWidths(); renderHead();
+  load();
+})();
+</script>
+</body>
+</html>
