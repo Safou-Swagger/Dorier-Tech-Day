@@ -179,7 +179,7 @@
   $("enrich").addEventListener("click", function () {
     var btn = $("enrich"), label = btn.textContent;
     btn.disabled = true; btn.textContent = "Researching… (up to 1 minute)";
-    fetch(cfg.SUPABASE_URL + "/functions/v1/enrich", { method: "POST", headers: HEAD, body: JSON.stringify({ limit: 8 }) })
+    fetch(cfg.SUPABASE_URL + "/functions/v1/enrich", { method: "POST", headers: { apikey: HEAD.apikey, Authorization: HEAD.Authorization, "Content-Type": "application/json" }, body: JSON.stringify({ limit: 8 }) })
       .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message || ("Error " + r.status)); return d; }); })
       .then(function (d) {
         toast(d.saved + " new suggestion(s)" + (d.nothing_found ? ", " + d.nothing_found + " with nothing found" : "") +
