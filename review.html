@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review suggestions</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1c2330; --muted: #667085; --line: #e4e7ec;
+    --accent: #3b5bdb; --accent-soft: #e7ecfd; --danger: #b42318; --ok: #067647; --new: #fff6d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #12151c; --card: #1a1f2a; --text: #e8ebf2; --muted: #98a2b3; --line: #2b3342;
+            --accent: #8da2fb; --accent-soft: #263154; --danger: #f97066; --ok: #47cd89; --new: #3a3320; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { margin: 0 0 4px; font-size: 24px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+  .bar a { color: var(--accent); }
+  .count { color: var(--muted); flex: 1; }
+  button.btn { padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+               color: var(--text); font: inherit; cursor: pointer; }
+  button.btn.ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+  button.btn.no { color: var(--danger); }
+  button.btn:disabled { opacity: .5; cursor: wait; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+  .card h3 { margin: 0 0 8px; font-size: 16px; word-break: break-word; }
+  .card h3 small { color: var(--muted); font-weight: 400; }
+  dl { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; margin: 0; }
+  dt { color: var(--muted); font-size: 13px; padding-top: 2px; }
+  dd { margin: 0; word-break: break-word; }
+  .new { background: var(--new); border-radius: 6px; padding: 2px 8px; }
+  .was { color: var(--muted); }
+  .tag { display: inline-block; background: var(--accent-soft); color: var(--accent); padding: 1px 8px;
+         border-radius: 999px; font-size: 12px; margin-right: 4px; }
+  .src { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .src a { color: var(--accent); margin-right: 8px; }
+  .acts { display: flex; gap: 8px; margin-top: 12px; }
+  a { color: var(--accent); }
+  .msg { text-align: center; color: var(--muted); padding: 40px 10px; }
+  .msg.error { color: var(--danger); }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--text);
+           color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; display: none; }
+  .note { font-size: 13px; color: var(--muted); background: var(--card); border: 1px dashed var(--line);
+          border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Review suggestions</h1>
+  <p class="sub">Researched by AI with Google Search. Nothing is added to your data until you approve it.</p>
+  <div class="note">Yellow = proposed new value. Only <b>empty</b> fields are ever filled; existing values are never overwritten. Check the sources before approving.</div>
+  <div class="bar">
+    <span class="count" id="count"></span>
+    <a href="index.html">← Back to the table</a>
+    <button class="btn" id="enrich" type="button">Research next 8 rows with AI</button>
+    <button class="btn ok" id="approveAll" type="button">Approve all shown</button>
+  </div>
+  <div id="list"><div class="msg">Loading…</div></div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var cfg = window.APP_CONFIG;
+  var REST = cfg.SUPABASE_URL + "/rest/v1/";
+  var HEAD = { apikey: cfg.SUPABASE_PUBLISHABLE_KEY, Authorization: "Bearer " + cfg.SUPABASE_PUBLISHABLE_KEY,
+               "Content-Type": "application/json", Prefer: "return=representation" };
+  var $ = function (id) { return document.getElementById(id); };
+  var items = [];
+
+  // Suggestions come from the web through an AI: treat every value as untrusted text.
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function safeUrl(u) { return /^https?:\/\/\S+$/i.test(u || "") ? u : null; }
+  function link(u) { var s = safeUrl(u); return s ? '<a href="' + esc(s) + '" target="_blank" rel="noopener noreferrer">' + esc(s) + "</a>" : esc(u); }
+  function toast(m) { var t = $("toast"); t.textContent = m; t.style.display = "block";
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.style.display = "none"; }, 3000); }
+
+  function req(method, path, body) {
+    return fetch(REST + path, { method: method, headers: HEAD, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { if (!r.ok) throw new Error("Error " + r.status); return r.status === 204 ? null : r.json(); });
+  }
+
+  function load() {
+    return Promise.all([
+      req("GET", "base_de_connaissance_suggestions?status=eq.pending&select=*&order=entry_id.asc&limit=1000"),
+      req("GET", "base_de_connaissance?select=id,nom,texte,url,etiquettes&limit=1000")
+    ]).then(function (res) {
+      var byId = {};
+      res[1].forEach(function (r) { byId[r.id] = r; });
+      items = res[0].filter(function (s) { return byId[s.entry_id]; }).map(function (s) { return { s: s, row: byId[s.entry_id] }; });
+      render();
+    }).catch(function (e) {
+      $("list").innerHTML = '<div class="msg error"><b>Could not load.</b><br>' + esc(e.message) + "</div>";
+    });
+  }
+
+  function field(label, was, now, isTags, isLink) {
+    var show = function (v) { return isTags ? (v || []).map(function (t) { return '<span class="tag">' + esc(t) + "</span>"; }).join("")
+                                            : (isLink ? link(v) : esc(v)); };
+    var has = isTags ? (now && now.length) : now;
+    if (!has) {
+      var cur = isTags ? (was && was.length) : was;
+      return cur ? "<dt>" + label + "</dt><dd>" + show(was) + "</dd>" : "";
+    }
+    return "<dt>" + label + '</dt><dd><span class="new">' + show(now) + "</span></dd>";
+  }
+
+  function render() {
+    $("count").textContent = items.length + " suggestion" + (items.length === 1 ? "" : "s") + " waiting";
+    $("approveAll").disabled = !items.length;
+    if (!items.length) {
+      $("list").innerHTML = '<div class="msg">No suggestions waiting.<br>Click <b>Research next 8 rows with AI</b> to find more.</div>';
+      return;
+    }
+    $("list").innerHTML = items.map(function (it) {
+      var s = it.s, r = it.row;
+      var title = r.nom || r.url || r.texte || ("Entry #" + r.id);
+      var srcs = (s.sources || []).map(function (x) { var u = safeUrl(x.uri);
+        return u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(x.title || u) + "</a>" : ""; }).join("");
+      return '<div class="card" data-sid="' + s.id + '"><h3>' + esc(title) + " <small>#" + r.id + "</small></h3><dl>" +
+        field("Name", r.nom, s.nom) + field("Text", r.texte, s.texte) + field("Link", r.url, s.url, false, true) +
+        field("Tags", r.etiquettes, s.etiquettes, true) + "</dl>" +
+        (srcs ? '<div class="src">Sources: ' + srcs + "</div>" : '<div class="src">No sources returned — check carefully.</div>') +
+        '<div class="acts"><button class="btn ok" data-act="ok">Approve</button><button class="btn no" data-act="no">Reject</button></div></div>';
+    }).join("");
+  }
+
+  // Fill only fields that are STILL empty in the database (checked by the filter itself).
+  function approve(it) {
+    var s = it.s, id = it.row.id, jobs = [];
+    ["nom", "texte", "url"].forEach(function (f) {
+      if (s[f]) jobs.push(req("PATCH", "base_de_connaissance?id=eq." + id + "&" + f + "=is.null", (function (o) { o[f] = s[f]; return o; })({})));
+    });
+    if (s.etiquettes && s.etiquettes.length)
+      jobs.push(req("PATCH", "base_de_connaissance?id=eq." + id + "&etiquettes=eq." + encodeURIComponent("{}"), { etiquettes: s.etiquettes }));
+    return Promise.all(jobs).then(function () {
+      return req("PATCH", "base_de_connaissance_suggestions?id=eq." + s.id, { status: "approved" });
+    });
+  }
+  function reject(it) { return req("PATCH", "base_de_connaissance_suggestions?id=eq." + it.s.id, { status: "rejected" }); }
+
+  $("list").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-act]");
+    if (!b) return;
+    var sid = Number(b.closest(".card").dataset.sid);
+    var it = items.filter(function (x) { return x.s.id === sid; })[0];
+    if (!it) return;
+    b.disabled = true;
+    (b.dataset.act === "ok" ? approve(it) : reject(it))
+      .then(function () {
+        items = items.filter(function (x) { return x !== it; }); render();
+        toast(b.dataset.act === "ok" ? "Approved and added" : "Rejected");
+      })
+      .catch(function (err) { b.disabled = false; toast(err.message + " — nothing was changed."); });
+  });
+
+  $("approveAll").addEventListener("click", function () {
+    if (!items.length) return;
+    if (!window.confirm("Approve all " + items.length + " suggestions without reviewing each one?")) return;
+    var btn = $("approveAll"), todo = items.slice(), ok = 0;
+    btn.disabled = true;
+    (function next() {
+      if (!todo.length) { toast(ok + " approved"); load(); return; }
+      approve(todo.shift()).then(function () { ok++; next(); })
+        .catch(function (err) { toast("Stopped after " + ok + ": " + err.message); load(); });
+    })();
+  });
+
+  // Asks the Supabase function (which holds the Gemini/Tavily keys) to research the next rows.
+  $("enrich").addEventListener("click", function () {
+    var btn = $("enrich"), label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Researching… (up to 1 minute)";
+    fetch(cfg.SUPABASE_URL + "/functions/v1/enrich", { method: "POST", headers: HEAD, body: JSON.stringify({ limit: 8 }) })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.message || ("Error " + r.status)); return d; }); })
+      .then(function (d) {
+        toast(d.saved + " new suggestion(s)" + (d.nothing_found ? ", " + d.nothing_found + " with nothing found" : "") +
+              ". " + d.remaining + " rows left." + (d.stopped ? " Stopped: " + d.stopped : ""));
+        return load();
+      })
+      .catch(function (e) { toast(e.message); })
+      .then(function () { btn.disabled = false; btn.textContent = label; });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
